@@ -1,0 +1,11 @@
+{
+  "name": "Mrcook",
+  "symbol": "ENDLESS",
+  "description": "Mrcook, a legendary 'hacker' from Endless Discord. Known for his skills in hacking the CIA and BTC with his bare hands. Also goes by Babypunk and Lilpeace depending on the day. Mrcook's legendary HACKER HANDS deal 20 damage.",
+  "image": "/images/mrcook.png",
+  "attributes": [
+    { "trait_type": "Attack", "value": 20 },
+    { "trait_type": "Health", "value": 400 },
+    { "trait_type": "Legendary Skill", "value": "Hacker Hands" }
+  ]
+}
