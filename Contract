@@ -1,0 +1,107 @@
+use anchor_lang::prelude::*;
+use anchor_spl::token::{self, Mint, Token, TokenAccount};
+use mpl_token_metadata::instruction::{create_metadata_accounts_v2, update_metadata_accounts_v2};
+use solana_program::program::invoke;
+
+declare_id!("YourProgramPublicKeyHere");
+
+#[program]
+pub mod endless_legends_nfts {
+    use super::*;
+
+    pub fn mint_nft(
+        ctx: Context<MintNFT>,
+        name: String,
+        symbol: String,
+        uri: String,
+        attack: u64,
+        hp: u64,
+    ) -> Result<()> {
+        let metadata_accounts = ctx.accounts.metadata.clone();
+        let mint_key = ctx.accounts.mint.key();
+
+        // Add custom stats to the metadata URI
+        let full_uri = format!("{}?attack={}&hp={}", uri, attack, hp);
+
+        invoke(
+            &create_metadata_accounts_v2(
+                ctx.accounts.token_metadata_program.key(),
+                metadata_accounts.key(),
+                mint_key,
+                ctx.accounts.mint_authority.key(),
+                ctx.accounts.payer.key(),
+                ctx.accounts.payer.key(),
+                name,
+                symbol,
+                full_uri,
+                None,
+                0,
+                true,
+                false,
+                None,
+                None,
+            ),
+            &[
+                ctx.accounts.metadata.to_account_info(),
+                ctx.accounts.mint.to_account_info(),
+                ctx.accounts.mint_authority.to_account_info(),
+                ctx.accounts.payer.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
+                ctx.accounts.rent.to_account_info(),
+            ],
+        )?;
+
+        Ok(())
+    }
+
+    pub fn update_metadata(
+        ctx: Context<UpdateMetadata>,
+        name: String,
+        symbol: String,
+        uri: String,
+    ) -> Result<()> {
+        invoke(
+            &update_metadata_accounts_v2(
+                ctx.accounts.token_metadata_program.key(),
+                ctx.accounts.metadata.key(),
+                ctx.accounts.update_authority.key(),
+                None,
+                Some(name),
+                Some(symbol),
+                Some(uri),
+                None,
+            ),
+            &[
+                ctx.accounts.metadata.to_account_info(),
+                ctx.accounts.update_authority.to_account_info(),
+            ],
+        )?;
+
+        Ok(())
+    }
+}
+
+#[derive(Accounts)]
+pub struct MintNFT<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    #[account(mut)]
+    pub mint: Account<'info, Mint>,
+    /// CHECK: The Metaplex Metadata PDA
+    #[account(mut)]
+    pub metadata: AccountInfo<'info>,
+    #[account(mut)]
+    pub mint_authority: Signer<'info>,
+    pub token_metadata_program: AccountInfo<'info>,
+    pub token_program: Program<'info, Token>,
+    pub rent: Sysvar<'info, Rent>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateMetadata<'info> {
+    #[account(mut)]
+    pub metadata: AccountInfo<'info>,
+    pub update_authority: Signer<'info>,
+    pub token_metadata_program: AccountInfo<'info>,
+}
