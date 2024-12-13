@@ -1,0 +1,100 @@
+import os
+import json
+from discord.ext import commands
+from solana.rpc.api import Client
+from solana.transaction import Transaction
+from solana.publickey import PublicKey
+from solana.system_program import CreateAccountParams, create_account
+from solana.keypair import Keypair
+from dotenv import load_dotenv
+from anchorpy import Provider, Program, Wallet
+
+# Load environment variables
+load_dotenv()
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+PRIVATE_KEY = os.getenv("PRIVATE_KEY")
+
+# Solana client setup
+SOLANA_RPC = "https://api.devnet.solana.com"  # Change to mainnet-beta if deploying to mainnet
+solana_client = Client(SOLANA_RPC)
+
+# Load your program ID and IDL
+PROGRAM_ID = "YourProgramPublicKeyHere"
+PROGRAM_IDL_PATH = "./endless_legends_idl.json"  # Replace with your program's IDL file
+
+# Load wallet
+wallet_keypair = Keypair.from_secret_key(bytes(json.loads(PRIVATE_KEY)))
+provider = Provider(solana_client, Wallet(wallet_keypair))
+program = Program.from_file(PROGRAM_IDL_PATH, PublicKey(PROGRAM_ID), provider)
+
+# Discord bot setup
+bot = commands.Bot(command_prefix="!")
+
+@bot.event
+async def on_ready():
+    print(f"Logged in as {bot.user}")
+
+@bot.command()
+async def mint(ctx, name: str, attack: int, hp: int):
+    """
+    Command to mint an NFT for Endless Legends.
+    """
+    try:
+        # Define the NFT metadata
+        metadata = {
+            "name": name,
+            "symbol": "ENDLESS",
+            "uri": f"https://your-metadata-hosting.com/{name}.json",
+            "attack": attack,
+            "hp": hp,
+        }
+        
+        # Mint an NFT using the Anchor program
+        tx = await program.rpc["mint_nft"](
+            name,
+            "ENDLESS",
+            metadata["uri"],
+            attack,
+            hp,
+            ctx=program.accounts(
+                mint=wallet_keypair.public_key,
+                mint_authority=wallet_keypair.public_key,
+                payer=wallet_keypair.public_key,
+                metadata=PublicKey("YourMetadataAccountPublicKeyHere"),
+                token_metadata_program=PublicKey("MetaPlexTokenMetadataProgramIDHere"),
+            ),
+        )
+
+        # Send confirmation message
+        await ctx.send(f"NFT minted successfully! Transaction: {tx}")
+    except Exception as e:
+        print(e)
+        await ctx.send(f"Failed to mint NFT: {str(e)}")
+
+@bot.command()
+async def balance(ctx):
+    """
+    Command to check the bot wallet balance.
+    """
+    try:
+        balance = solana_client.get_balance(wallet_keypair.public_key)["result"]["value"]
+        sol_balance = balance / 10**9  # Convert lamports to SOL
+        await ctx.send(f"Bot wallet balance: {sol_balance} SOL")
+    except Exception as e:
+        print(e)
+        await ctx.send(f"Failed to retrieve balance: {str(e)}")
+
+@bot.command()
+async def helpme(ctx):
+    """
+    Display help information.
+    """
+    commands = """
+    **Commands:**
+    `!mint <name> <attack> <hp>` - Mint an NFT with the specified name, attack, and HP.
+    `!balance` - Check the bot wallet balance.
+    """
+    await ctx.send(commands)
+
+# Run the bot
+bot.run(DISCORD_TOKEN)
