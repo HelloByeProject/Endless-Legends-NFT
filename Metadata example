@@ -1,0 +1,10 @@
+{
+  "name": "Legend Name",
+  "symbol": "ENDLESS",
+  "description": "An Endless Legends NFT",
+  "image": "https://link-to-nft-image.com/image.png",
+  "attributes": [
+    { "trait_type": "Attack", "value": 120 },
+    { "trait_type": "HP", "value": 300 }
+  ]
+}
